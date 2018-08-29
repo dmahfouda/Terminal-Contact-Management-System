@@ -4,6 +4,7 @@ class Csv_messenger
 
 	def initialize
 		@contacts = CSV.read("google.csv")
+		
 		@given_name_index = @contacts[0].find_index("Given Name")
 		@family_name_index = @contacts[0].find_index("Family Name")
 		@phone_index = @contacts[0].find_index("Phone 1 - Value")
@@ -15,6 +16,7 @@ class Csv_messenger
 		@name_phone_pairs_in_group = []
 		@individual_messages_array = []
 		@current_contact = []
+		@contacts_in_selected_group = []
 		
 		@message
 		@message_mode
@@ -23,6 +25,25 @@ class Csv_messenger
 		
 		get_group_names
 		get_contacts_with_phones
+		format_phone_numbers
+	end
+
+	def format_phone_numbers
+		@contacts_with_phones.each do |c|
+			c[@phone_index].gsub!(/\D/,'')
+		end
+	end
+
+	def get_contacts_in_selected_group
+		@contacts.each do |c|
+			if c[@group_membership_index].include? @group_selection 
+				@contacts_in_selected_group << c
+			end
+		end
+	end
+
+	def put_information_about_selected_group
+		puts "#{@contacts_in_selected_group.length} contacts, #{@contacts_in_selected_group.select{ |c| c[@phone_index] }.length} contacts with phones"
 	end
 
 	def get_group_names
@@ -51,9 +72,10 @@ class Csv_messenger
 	end
 
 	def validate_group_selection
-		puts @group_names
 		if @group_names.find_index(@group_selection)
 			get_and_format_contacts_in_selected_group
+			get_contacts_in_selected_group
+			put_information_about_selected_group
 		else
 			puts "That's not a valid group."
 			get_user_group_selection
@@ -102,7 +124,6 @@ class Csv_messenger
 	end
 
 	def validate_group_message
-		puts @message
 		puts "Are you sure this is the message you want to send? Reply 'Yes' or 'No'"
 		r = gets.chomp
 		quit_if_quit_selected r 
@@ -114,8 +135,7 @@ class Csv_messenger
 	end
 
 	def validate_individual_messages
-		puts "#{@current_contact[@given_name_index]}: #{@message}"
-		puts "Are you sure this is the message you want to send? Reply 'Yes' or 'No'"
+		puts "Are you sure this is the message you want to send to #{@current_contact[@given_name_index]} #{@current_contact[@family_name_index]}?"
 		r = gets.chomp
 		quit_if_quit_selected r 
 		if r == "Yes" || r == "Y" || r == "y"
@@ -137,25 +157,23 @@ class Csv_messenger
 
 	def send_group_message
 		@name_phone_pairs_in_group.each do |c|
-			#This formatting setp should be its own method
-			c[1].gsub!(/\D/,'')
 			#system "osascript sendMessage.applescript #{c[1]} '#{@message}'"
-			puts "osascript sendMessage.applescript #{c[1]} '#{@message}'"		
+			puts "osascript sendMessage.applescript #{c[@phone_index]} '#{@message}'"		
 		end
 	end
 
 	def send_individual_message
-		@current_contact[@phone_index].gsub!(/\D/,'')
+		#system "osascript sendMessage.applescript #{@current_contact[@phone_index]} '#{@message}'"
 		puts "osascript SendMessage.applescript #{@current_contact[@phone_index]} '#{@message}'"
 	end
 
 	def collect_individual_messages
 		@contacts_with_phones_in_selected_group.each do |c|
-			puts "Message for #{c[@given_name_index]} #{c[@family_name_index]}?: "
+			puts "Message for #{c[@given_name_index]} #{c[@family_name_index]}:"
 			@current_contact = c
 			@message = gets.chomp
-			quit_if_quit_selected @individual_messages_array.last
-			validate_individual_messages
+			quit_if_quit_selected @message
+			#validate_individual_messages
 			send_individual_message
 		end
 	end
