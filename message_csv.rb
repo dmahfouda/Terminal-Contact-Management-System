@@ -8,6 +8,7 @@ class Csv_messenger
 		@given_name_index = @contacts[0].find_index("Given Name")
 		@family_name_index = @contacts[0].find_index("Family Name")
 		@phone_index = @contacts[0].find_index("Phone 1 - Value")
+		@email_index = @contacts[0].find_index("E-mail 1 - Value")
 		@group_membership_index = @contacts[0].find_index("Group Membership")
 
 		@contacts_with_phones = []
@@ -20,12 +21,46 @@ class Csv_messenger
 		
 		@message
 		@message_mode
+		@message_type
 		@group_selection
+		@command
 
-		
 		get_group_names
 		get_contacts_with_phones
 		format_phone_numbers
+		prompt
+	end
+
+	def prompt
+		puts "Terminal CMS>"
+		@command = gets.chomp
+		evaluate_command
+	end
+
+	def evaluate_command
+		case @command
+		when "E","e","Email","email"
+			@message_type = "Email"
+			get_message_mode
+			get_user_group_selection
+			compose_messages
+		when "i","iMessage","SMS"
+			@message_type = "iMessage"	
+			get_message_mode
+			get_user_group_selection
+			compose_messages
+		when "q","quit", "Quit"
+			exit
+		when "u", "U", "update", "Update Contacts"
+			puts "Getting new contacts..."
+			system 'rm google.csv'
+			system 'ruby webdriver_collect_contacts.rb'
+			prompt
+		else
+			puts "That's not a valid command. Please try again."
+			@command = gets.chomp
+			evaluate_command
+		end
 	end
 
 	def format_phone_numbers
@@ -43,7 +78,7 @@ class Csv_messenger
 	end
 
 	def put_information_about_selected_group
-		puts "#{@contacts_in_selected_group.length} contacts, #{@contacts_in_selected_group.select{ |c| c[@phone_index] }.length} contacts with phones"
+		puts "#{@contacts_in_selected_group.length} contacts, #{@contacts_in_selected_group.select{ |c| c[@phone_index] }.length} contacts with phones, #{@contacts_in_selected_group.select{|c| c[@email_index] }.length} contacts with email"
 	end
 
 	def get_group_names
@@ -105,6 +140,24 @@ class Csv_messenger
 		validate_message_mode
 	end
 
+	def get_message_or_email_selection
+		puts "Do you want to send an (i)Message or an (E)mail?"
+		@message_type = gets.chomp
+		quit_if_quit_selected @message_type
+		validate_message_type
+	end
+
+	def validate_message_type
+		if @message_type == "i" || @message_type == "E"
+			return
+		else
+			puts "That's not a valid message type. Please reply 'i' or 'E'."
+			@message_type = gets.chomp
+			quit_if_quit_selected @message_type
+			validate_message_type 
+		end
+	end
+
 	def validate_message_mode
 		if @message_mode == "G" || @message_mode == "I" || "@message_mode" == "Group" || @message_mode == "Individual"  
 			return
@@ -156,15 +209,25 @@ class Csv_messenger
 	end
 
 	def send_group_message
-		@name_phone_pairs_in_group.each do |c|
-			#system "osascript sendMessage.applescript #{c[1]} '#{@message}'"
-			puts "osascript sendMessage.applescript #{c[@phone_index]} '#{@message}'"		
+		@contacts_in_selected_group.each do |c|
+			if @message_type == "Email"
+				system "osascript sendEmail.applescript #{c[@email_index]} '#{@message}'"
+				#puts "osascript sendEmail.applescript #{c[@email_index]} '#{@message}'"		
+			elsif @message_type == "iMessage"
+				system "osascript sendMessage.applescript #{c[@phone_index]} '#{@message}'"
+				#puts "osascript sendMessage.applescript #{c[@phone_index]} '#{@message}'"
+			end		
 		end
 	end
 
 	def send_individual_message
-		#system "osascript sendMessage.applescript #{@current_contact[@phone_index]} '#{@message}'"
-		puts "osascript SendMessage.applescript #{@current_contact[@phone_index]} '#{@message}'"
+		if @message_type == "Email"
+			system "osascript sendEmail.applescript #{c[@email_index]} '#{@message}'"
+			puts "osascript sendEmail.applescript #{@current_contact[@email_index]} '#{@message}'"
+		elsif @message_type == "iMessage"
+			system "osascript sendMessage.applescript #{@current_contact[@phone_index]} '#{@message}'"
+			puts "osascript sendMessage.applescript #{@current_contact[@phone_index]} '#{@message}'"
+		end
 	end
 
 	def collect_individual_messages
@@ -186,7 +249,8 @@ class Csv_messenger
 end
 
 cm = Csv_messenger.new
-cm.get_user_group_selection
-cm.get_message_mode
-cm.compose_messages
+# cm.get_user_group_selection
+# cm.get_message_or_email_selection
+# cm.get_message_mode
+# cm.compose_messages
 #cm.send_messages
