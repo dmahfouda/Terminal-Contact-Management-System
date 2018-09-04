@@ -39,10 +39,6 @@ class Csv_messenger
 
 	def evaluate_command
 		case @command
-		when "A","Apple Contacts","a"
-			puts "Updating Apple Contacts..."
-			system "osascript myContactsUpdate.applescript \"5163596507\""
-			prompt
 		when "E","e","Email","email"
 			@message_type = "Email"
 			get_message_mode
