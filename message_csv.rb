@@ -39,6 +39,10 @@ class Csv_messenger
 
 	def evaluate_command
 		case @command
+		when "A","Apple Contacts","a"
+			puts "Updating Apple Contacts..."
+			system "osascript myContactsUpdate.applescript \"5163596507\""
+			prompt
 		when "E","e","Email","email"
 			@message_type = "Email"
 			get_message_mode
@@ -65,7 +69,11 @@ class Csv_messenger
 
 	def format_phone_numbers
 		@contacts_with_phones.each do |c|
-			c[@phone_index].gsub!(/\D/,'')
+			if c[@phone_index].include?(' ::: ')
+				c[@phone_index] = c[@phone_index].split(' ::: ')[0].gsub!(/\D/,'')
+			else
+				c[@phone_index].gsub!(/\D/,'')
+			end
 		end
 	end
 
@@ -211,22 +219,22 @@ class Csv_messenger
 	def send_group_message
 		@contacts_in_selected_group.each do |c|
 			if @message_type == "Email"
-				system "osascript sendEmail.applescript #{c[@email_index]} '#{@message}'"
-				#puts "osascript sendEmail.applescript #{c[@email_index]} '#{@message}'"		
+				system "osascript sendEmail.applescript #{c[@email_index]} \"#{@message}\""
+				puts "osascript sendEmail.applescript #{c[@email_index]} \"#{@message}\""		
 			elsif @message_type == "iMessage"
-				system "osascript sendMessage.applescript #{c[@phone_index]} '#{@message}'"
-				#puts "osascript sendMessage.applescript #{c[@phone_index]} '#{@message}'"
+				system "osascript sendMessage.applescript #{c[@phone_index]} \"#{@message}\""
+				puts "osascript sendMessage.applescript #{c[@phone_index]} \"#{@message}\""
 			end		
 		end
 	end
 
 	def send_individual_message
 		if @message_type == "Email"
-			system "osascript sendEmail.applescript #{c[@email_index]} '#{@message}'"
-			puts "osascript sendEmail.applescript #{@current_contact[@email_index]} '#{@message}'"
+			system "osascript sendEmail.applescript #{c[@email_index]} \"#{@message}]\""
+			puts "osascript sendEmail.applescript #{@current_contact[@email_index]} \"#{@message}]\""
 		elsif @message_type == "iMessage"
-			system "osascript sendMessage.applescript #{@current_contact[@phone_index]} '#{@message}'"
-			puts "osascript sendMessage.applescript #{@current_contact[@phone_index]} '#{@message}'"
+			system "osascript sendMessage.applescript #{@current_contact[@phone_index]} \"#{@message}\""
+			puts "osascript sendMessage.applescript #{@current_contact[@phone_index]} \"#{@message}\""
 		end
 	end
 
@@ -249,8 +257,3 @@ class Csv_messenger
 end
 
 cm = Csv_messenger.new
-# cm.get_user_group_selection
-# cm.get_message_or_email_selection
-# cm.get_message_mode
-# cm.compose_messages
-#cm.send_messages
