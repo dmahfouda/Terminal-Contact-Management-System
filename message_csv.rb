@@ -1,4 +1,5 @@
 require 'CSV'
+require 'readline'
 
 class Csv_messenger
 
@@ -238,7 +239,7 @@ class Csv_messenger
 		@contacts_with_phones_in_selected_group.each do |c|
 			puts "Message for #{c[@given_name_index]} #{c[@family_name_index]}:"
 			@current_contact = c
-			@message = gets.chomp
+			@message = Readline.readline('',true)
 			quit_if_quit_selected @message
 			#validate_individual_messages
 			send_individual_message
