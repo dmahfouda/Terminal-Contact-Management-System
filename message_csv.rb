@@ -11,18 +11,18 @@ class Csv_messenger
 		@phone_index = @contacts[0].find_index("Phone 1 - Value")
 		@email_index = @contacts[0].find_index("E-mail 1 - Value")
 		@group_membership_index = @contacts[0].find_index("Group Membership")
-
-		@contacts_with_phones = []
+		
 		@group_names = []
+		@contacts_in_selected_group = []
+
 		@contacts_with_phones_in_selected_group = []
 		@name_phone_pairs_in_group = []
 		@individual_messages_array = []
 		@current_contact = []
-		@contacts_in_selected_group = []
 		
 		@message
-		@message_mode
-		@message_type
+		@individual_or_group_mode
+		@email_or_imessage
 		@group_selection
 		@command
 
@@ -33,22 +33,22 @@ class Csv_messenger
 	end
 
 	def prompt
-		puts "Terminal CMS>"
-		@command = gets.chomp
+		@command = Readline.readline("Terminal CMS> ", true)
+		# @command = gets.chomp
 		evaluate_command
 	end
 
 	def evaluate_command
 		case @command
 		when "E","e","Email","email"
-			@message_type = "Email"
-			get_message_mode
-			get_user_group_selection
+			@email_or_imessage = "Email"
+			get_individual_or_group_mode
+			get_group_selection
 			compose_messages
 		when "i","iMessage","SMS"
-			@message_type = "iMessage"	
-			get_message_mode
-			get_user_group_selection
+			@email_or_imessage = "iMessage"	
+			get_individual_or_group_mode
+			get_group_selection
 			compose_messages
 		when "q","quit", "Quit"
 			exit
@@ -56,6 +56,8 @@ class Csv_messenger
 			puts "Getting new contacts..."
 			system 'rm google.csv'
 			system 'ruby webdriver_collect_contacts.rb'
+			prompt
+		when "p","P","prompt","Prompt"
 			prompt
 		else
 			puts "That's not a valid command. Please try again."
@@ -65,7 +67,7 @@ class Csv_messenger
 	end
 
 	def format_phone_numbers
-		@contacts_with_phones.each do |c|
+		get_contacts_with_phones.each do |c|
 			if c[@phone_index].include?(' ::: ')
 				c[@phone_index] = c[@phone_index].split(' ::: ')[0].gsub!(/\D/,'')
 			else
@@ -96,34 +98,34 @@ class Csv_messenger
 	end
 
 	def get_contacts_with_phones
+		contacts_with_phones = []
 		@contacts.each do |c|
 			if c[@phone_index]
-				@contacts_with_phones << c
+				contacts_with_phones << c
 			end
 		end
+		return contacts_with_phones
 	end
 
-	def get_user_group_selection
+	def get_group_selection
 		puts "To which group would you like to send a message?"
 		puts @group_names.join(", ")
 		@group_selection = gets.chomp
 		quit_if_quit_selected @group_selection
 		validate_group_selection
+		get_contacts_in_selected_group
+		put_information_about_selected_group
 	end
 
 	def validate_group_selection
-		if @group_names.find_index(@group_selection)
-			get_and_format_contacts_in_selected_group
-			get_contacts_in_selected_group
-			put_information_about_selected_group
-		else
+		if !@group_names.find_index(@group_selection)
 			puts "That's not a valid group."
-			get_user_group_selection
+			get_group_selection
 		end
 	end
 
 	def get_and_format_contacts_in_selected_group
-		@contacts_with_phones.each do |c|
+		get_contacts_with_phones.each do |c|
 			if c[@group_membership_index].include? @group_selection
 				@contacts_with_phones_in_selected_group << c
 			end
@@ -138,47 +140,48 @@ class Csv_messenger
 		@name_phone_pairs_in_group
 	end
 
-	def get_message_mode
+	def get_individual_or_group_mode
 		puts "What kind of messages would you like to send? (G)roup or (I)ndividual?"
-		@message_mode = gets.chomp
-		quit_if_quit_selected @message_mode
+		@individual_or_group_mode = gets.chomp
+		quit_if_quit_selected @individual_or_group_mode
 		validate_message_mode
 	end
 
 	def get_message_or_email_selection
 		puts "Do you want to send an (i)Message or an (E)mail?"
-		@message_type = gets.chomp
-		quit_if_quit_selected @message_type
+		@email_or_imessage = gets.chomp
+		quit_if_quit_selected @email_or_imessage
 		validate_message_type
 	end
 
 	def validate_message_type
-		if @message_type == "i" || @message_type == "E"
+		if @email_or_imessage == "i" || @email_or_imessage == "E"
 			return
 		else
 			puts "That's not a valid message type. Please reply 'i' or 'E'."
-			@message_type = gets.chomp
-			quit_if_quit_selected @message_type
+			@email_or_imessage = gets.chomp
+			quit_if_quit_selected @email_or_imessage
 			validate_message_type 
 		end
 	end
 
 	def validate_message_mode
-		if @message_mode == "G" || @message_mode == "I" || "@message_mode" == "Group" || @message_mode == "Individual"  
+		if @individual_or_group_mode == "G" || @individual_or_group_mode == "I" || "@individual_or_group_mode" == "Group" || @individual_or_group_mode == "Individual"  
 			return
 		else 
 			puts "That's not a valid message mode. Please reply 'G' or 'I'."
-			@message_mode = gets.chomp
-			quit_if_quit_selected @message_mode
+			@individual_or_group_mode = gets.chomp
+			quit_if_quit_selected @individual_or_group_mode
 			validate_message_mode
 		end
 	end
 
-	def collect_message
+	def collect_and_send_group_message
 		puts "What message would you like to send?"
 		@message = gets.chomp
 		quit_if_quit_selected @message
 		validate_group_message
+		send_group_message
 	end
 
 	def validate_group_message
@@ -186,9 +189,9 @@ class Csv_messenger
 		r = gets.chomp
 		quit_if_quit_selected r 
 		if r == 'Yes' || r == 'Y' || r == "y"
-			send_group_message
+			return
 		else
-			collect_message
+			collect_and_send_group_message
 		end
 	end
 
@@ -206,19 +209,19 @@ class Csv_messenger
 	end
 
 	def compose_messages
-		if @message_mode == "G" || @message_mode == "Group"
-			collect_message
-		elsif @message_mode == "I" || @message_mode == "Individual"
-			collect_individual_messages
+		if @individual_or_group_mode == "G" || @individual_or_group_mode == "Group"
+			collect_and_send_group_message
+		elsif @individual_or_group_mode == "I" || @individual_or_group_mode == "Individual"
+			collect_and_send_individual_messages
 		end 
 	end
 
 	def send_group_message
 		@contacts_in_selected_group.each do |c|
-			if @message_type == "Email"
+			if @email_or_imessage == "Email"
 				system "osascript sendEmail.applescript #{c[@email_index]} \"#{@message}\""
 				puts "osascript sendEmail.applescript #{c[@email_index]} \"#{@message}\""		
-			elsif @message_type == "iMessage"
+			elsif @email_or_imessage == "iMessage"
 				system "osascript sendMessage.applescript #{c[@phone_index]} \"#{@message}\""
 				puts "osascript sendMessage.applescript #{c[@phone_index]} \"#{@message}\""
 			end		
@@ -226,23 +229,25 @@ class Csv_messenger
 	end
 
 	def send_individual_message
-		if @message_type == "Email"
+		if @email_or_imessage == "Email"
 			system "osascript sendEmail.applescript #{c[@email_index]} \"#{@message}]\""
 			puts "osascript sendEmail.applescript #{@current_contact[@email_index]} \"#{@message}]\""
-		elsif @message_type == "iMessage"
+		elsif @email_or_imessage == "iMessage"
 			system "osascript sendMessage.applescript #{@current_contact[@phone_index]} \"#{@message}\""
 			puts "osascript sendMessage.applescript #{@current_contact[@phone_index]} \"#{@message}\""
 		end
 	end
 
-	def collect_individual_messages
-		@contacts_with_phones_in_selected_group.each do |c|
-			puts "Message for #{c[@given_name_index]} #{c[@family_name_index]}:"
-			@current_contact = c
-			@message = Readline.readline('',true)
-			quit_if_quit_selected @message
-			#validate_individual_messages
-			send_individual_message
+	def collect_and_send_individual_messages
+		@contacts_in_selected_group.each do |c|
+			if c[@phone_index]
+				puts "Message for #{c[@given_name_index]} #{c[@family_name_index]}:"
+				@current_contact = c
+				@message = Readline.readline('',true)
+				quit_if_quit_selected @message
+				#validate_individual_messages
+				send_individual_message
+			end
 		end
 	end
 
