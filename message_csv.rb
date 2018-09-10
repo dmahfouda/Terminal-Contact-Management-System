@@ -14,10 +14,6 @@ class Csv_messenger
 		
 		@group_names = []
 		@contacts_in_selected_group = []
-
-		@contacts_with_phones_in_selected_group = []
-		@name_phone_pairs_in_group = []
-		@individual_messages_array = []
 		@current_contact = []
 		
 		@message
@@ -27,14 +23,12 @@ class Csv_messenger
 		@command
 
 		get_group_names
-		get_contacts_with_phones
 		format_phone_numbers
 		prompt
 	end
 
 	def prompt
 		@command = Readline.readline("Terminal CMS> ", true)
-		# @command = gets.chomp
 		evaluate_command
 	end
 
@@ -43,14 +37,20 @@ class Csv_messenger
 		when "E","e","Email","email"
 			@email_or_imessage = "Email"
 			get_individual_or_group_mode
-			get_group_selection
+			get_and_validate_group_selection
+			quit_if_quit_selected @group_selection
+			get_contacts_in_selected_group
+			put_information_about_selected_group
 			compose_messages
 		when "i","iMessage","SMS"
 			@email_or_imessage = "iMessage"	
 			get_individual_or_group_mode
-			get_group_selection
+			get_and_validate_group_selection
+			quit_if_quit_selected @group_selection
+			get_contacts_in_selected_group
+			put_information_about_selected_group
 			compose_messages
-		when "q","quit", "Quit"
+		when "q","quit", "Quit", "Q"
 			exit
 		when "u", "U", "update", "Update Contacts"
 			puts "Getting new contacts..."
@@ -66,12 +66,21 @@ class Csv_messenger
 		end
 	end
 
+	def get_and_validate_group_selection
+		puts "To which group would you like to send a message?"
+		puts @group_names.join(", ")
+		@group_selection = gets.chomp
+		validate_group_selection
+	end
+
 	def format_phone_numbers
-		get_contacts_with_phones.each do |c|
-			if c[@phone_index].include?(' ::: ')
-				c[@phone_index] = c[@phone_index].split(' ::: ')[0].gsub!(/\D/,'')
-			else
-				c[@phone_index].gsub!(/\D/,'')
+		@contacts.each do |c|
+			if c[@phone_index]
+				if c[@phone_index].include?(' ::: ')
+					c[@phone_index] = c[@phone_index].split(' ::: ')[0].gsub!(/\D/,'')
+				else				
+					c[@phone_index].gsub!(/\D/,'')
+				end
 			end
 		end
 	end
@@ -97,9 +106,9 @@ class Csv_messenger
 		@group_names = @group_names.uniq.drop(1)
 	end
 
-	def get_contacts_with_phones
+	def get_contacts_with_phones contacts_array
 		contacts_with_phones = []
-		@contacts.each do |c|
+		contacts_array.each do |c|
 			if c[@phone_index]
 				contacts_with_phones << c
 			end
@@ -107,37 +116,11 @@ class Csv_messenger
 		return contacts_with_phones
 	end
 
-	def get_group_selection
-		puts "To which group would you like to send a message?"
-		puts @group_names.join(", ")
-		@group_selection = gets.chomp
-		quit_if_quit_selected @group_selection
-		validate_group_selection
-		get_contacts_in_selected_group
-		put_information_about_selected_group
-	end
-
 	def validate_group_selection
 		if !@group_names.find_index(@group_selection)
 			puts "That's not a valid group."
 			get_group_selection
 		end
-	end
-
-	def get_and_format_contacts_in_selected_group
-		get_contacts_with_phones.each do |c|
-			if c[@group_membership_index].include? @group_selection
-				@contacts_with_phones_in_selected_group << c
-			end
-		end
-		build_array_of_name_phone_pairs
-	end
-
-	def build_array_of_name_phone_pairs
-		@contacts_with_phones_in_selected_group.each do |c|
-			@name_phone_pairs_in_group << [c[@given_name_index],c[@phone_index]]
-		end
-		@name_phone_pairs_in_group
 	end
 
 	def get_individual_or_group_mode
